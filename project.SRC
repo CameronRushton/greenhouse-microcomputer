@@ -1,0 +1,9 @@
+[Files]
+SYSC2003A5.c
+DP256Reg.s
+basicLCD.s
+assign5vector.c.c
+[Headers]
+hcs12dp256.h
+basicLCD.h
+[Documents]

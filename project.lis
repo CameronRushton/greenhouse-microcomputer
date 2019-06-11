@@ -1,0 +1,1183 @@
+                        .module SYSC2003A5.c
+                        .area data
+ 0000           _blindStart::
+ 0000                   .blkb 1
+                        .area idata
+ 0000 00                .byte 0
+                        .area data
+ 0001           _LOWER_LIMIT:
+ 0001                   .blkb 1
+                        .area idata
+ 0001 0A                .byte 10
+                        .area data
+ 0002           _UPPER_LIMIT:
+ 0002                   .blkb 1
+                        .area idata
+ 0002 32                .byte 50
+                        .area data
+ 0003           _temp::
+ 0003                   .blkb 2
+                        .area idata
+ 0003 0000              .word 0
+                        .area data
+ 0005           _previousTemp::
+ 0005                   .blkb 2
+                        .area idata
+ 0005 0000              .word 0
+                        .area data
+ 0007           _time::
+ 0007                   .blkb 2
+                        .area idata
+ 0007 0000              .word 0
+                        .area data
+ 0009           _time2::
+ 0009                   .blkb 2
+                        .area idata
+ 0009 0000              .word 0
+                        .area data
+ 000B           _time3::
+ 000B                   .blkb 2
+                        .area idata
+ 000B 0000              .word 0
+                        .area data
+ 000D           _time4::
+ 000D                   .blkb 2
+                        .area idata
+ 000D 0000              .word 0
+                        .area data
+ 000F           _globalTime::
+ 000F                   .blkb 2
+                        .area idata
+ 000F 0000              .word 0
+                        .area data
+ 0011           _counter::
+ 0011                   .blkb 2
+                        .area idata
+ 0011 0000              .word 0
+                        .area data
+ 0013           _incTens::
+ 0013                   .blkb 1
+                        .area idata
+ 0013 00                .byte 0
+                        .area data
+ 0014           _incHunds::
+ 0014                   .blkb 1
+                        .area idata
+ 0014 00                .byte 0
+                        .area data
+ 0015           _incThou::
+ 0015                   .blkb 1
+                        .area idata
+ 0015 00                .byte 0
+                        .area data
+ 0016           _stringArr1::
+ 0016                   .blkb 16
+                        .area idata
+ 0016 474D532054696D653A30303030207300  .byte 'G,'M,'S,32,'T,'i,'m,'e,58,48,48,48,48,32,'s,0
+                        .area data
+ 0026           _stringArr2::
+ 0026                   .blkb 15
+                        .area idata
+ 0026 543A30304320503A20303052505300    .byte 'T,58,48,48,'C,32,'P,58,32,48,48,'R,'P,'S,0
+                        .area data
+ 0035           _stringArray::
+ 0035                   .blkb 5
+                        .area idata
+ 0035 3030303000        .byte 48,48,48,48,0
+                        .area data
+                        .area text
+ 0000           _main::
+ 0000 1B9E              leas -2,S
+ 0002           ; #include "hcs12dp256.h"
+ 0002           ; #include <stdio.h>
+ 0002           ; //keypad & for loops
+ 0002           ; char i, row, column;
+ 0002           ; 
+ 0002           ; //stepper motor
+ 0002           ; char blindStart = 0;
+ 0002           ; 
+ 0002           ; char duty; // For the motor (water pump)
+ 0002           ; char fan_duty; //for fan
+ 0002           ; char actualRPS, desiredRPS, rotations;
+ 0002           ; static char LOWER_LIMIT = 10, UPPER_LIMIT = 50;
+ 0002           ; 
+ 0002           ; int temp = 0, previousTemp = 0; //temperature
+ 0002           ; 
+ 0002           ; int time = 0, time2 = 0, time3 = 0, time4 = 0, globalTime = 0;
+ 0002           ; int counter = 0; //number of clock ticks
+ 0002           ; char incTens = 0, incHunds = 0, incThou = 0;
+ 0002           ; 
+ 0002           ; char stringArr1[] = "GMS Time:0000 s";
+ 0002           ; char stringArr2[] = "T:00C P: 00RPS";
+ 0002           ; char stringArray[] = "0000";
+ 0002           ; 
+ 0002           ; void main() {
+ 0002           ;       initHW();
+ 0002 160335            jsr _initHW
+ 0005           ;       
+ 0005           ;       //write static portion of LCD
+ 0005           ;       for (i = 0; i <= 14; i++) {
+ 0005 790007            clr _i
+ 0008 2016              bra L7
+ 000A           L4:
+ 000A           ; 		LCD_display(stringArr1[i]);
+ 000A CD0016            ldy #_stringArr1
+ 000D F60007            ldab _i
+ 0010 87                clra
+ 0011 6D80              sty 0,S
+ 0013 E380              addd 0,S
+ 0015 B746              tfr D,Y
+ 0017 E640              ldab 0,Y
+ 0019 87                clra
+ 001A 160000            jsr _LCD_display
+ 001D           ;       }
+ 001D           L5:
+ 001D 720007            inc _i
+ 0020           L7:
+ 0020 F60007            ldab _i
+ 0023 C10E              cmpb #14
+ 0025 23E3              bls L4
+ 0027           ;       LCD_instruction(0xc0); //newline
+ 0027 CC00C0            ldd #192
+ 002A 160000            jsr _LCD_instruction
+ 002D           ;       for (i = 0; i <= 13; i++) {
+ 002D 790007            clr _i
+ 0030 2016              bra L11
+ 0032           L8:
+ 0032           ; 		LCD_display(stringArr2[i]);
+ 0032 CD0026            ldy #_stringArr2
+ 0035 F60007            ldab _i
+ 0038 87                clra
+ 0039 6D80              sty 0,S
+ 003B E380              addd 0,S
+ 003D B746              tfr D,Y
+ 003F E640              ldab 0,Y
+ 0041 87                clra
+ 0042 160000            jsr _LCD_display
+ 0045           ;       }
+ 0045           L9:
+ 0045 720007            inc _i
+ 0048           L11:
+ 0048 F60007            ldab _i
+ 004B C10D              cmpb #13
+ 004D 23E3              bls L8
+ 004F 182002DB          lbra L13
+ 0053           L12:
+ 0053           ; 	
+ 0053           ; 	while (1) {
+ 0053           ; 		//Timer
+ 0053           ; 		if (counter == 4) {
+ 0053 FD0011            ldy _counter
+ 0056 8D0004            cpy #4
+ 0059 182600CD          lbne L15
+ 005D           ;                       
+ 005D           ;                       /*time++; - not working
+ 005D           ;                       LCD_instruction(0x89);
+ 005D           ;                       LCD_display(time4 + 0x30);
+ 005D           ;                       LCD_instruction(0x8A);
+ 005D           ;                       LCD_display(time3 + 0x30);
+ 005D           ;                       LCD_instruction(0x8B);
+ 005D           ;                       LCD_display(time2 + 0x30);
+ 005D           ;                       LCD_instruction(0x8C);
+ 005D           ;                       LCD_display(time + 0x30);*/
+ 005D           ;                       
+ 005D           ;               if (time == -1 && time2 == -1 && time3 == -1) {
+ 005D FD0007            ldy _time
+ 0060 8DFFFF            cpy #65535
+ 0063 2634              bne L17
+ 0065 FD0009            ldy _time2
+ 0068 8DFFFF            cpy #65535
+ 006B 262C              bne L17
+ 006D FD000B            ldy _time3
+ 0070 8DFFFF            cpy #65535
+ 0073 2624              bne L17
+ 0075           ;                       time4++;
+ 0075 FD000D            ldy _time4
+ 0078 02                iny
+ 0079 7D000D            sty _time4
+ 007C           ;                       LCD_instruction(0x89);
+ 007C CC0089            ldd #137
+ 007F 160000            jsr _LCD_instruction
+ 0082           ;                       LCD_display(time4 + 0x30);
+ 0082 FC000D            ldd _time4
+ 0085 C30030            addd #48
+ 0088 160000            jsr _LCD_display
+ 008B           ;                       if (time4 == 9) {
+ 008B FD000D            ldy _time4
+ 008E 8D0009            cpy #9
+ 0091 2606              bne L19
+ 0093           ;                              time4 = -1;
+ 0093 1803FFFF000D      movw #65535,_time4
+ 0099           ;                       }
+ 0099           L19:
+ 0099           ; 		    }
+ 0099           L17:
+ 0099           ; 	   		if (time == -1 && time2 == -1) {
+ 0099 FD0007            ldy _time
+ 009C 8DFFFF            cpy #65535
+ 009F 262C              bne L21
+ 00A1 FD0009            ldy _time2
+ 00A4 8DFFFF            cpy #65535
+ 00A7 2624              bne L21
+ 00A9           ;                      time3++;
+ 00A9 FD000B            ldy _time3
+ 00AC 02                iny
+ 00AD 7D000B            sty _time3
+ 00B0           ;                      LCD_instruction(0x8A);
+ 00B0 CC008A            ldd #138
+ 00B3 160000            jsr _LCD_instruction
+ 00B6           ;                      LCD_display(time3 + 0x30);
+ 00B6 FC000B            ldd _time3
+ 00B9 C30030            addd #48
+ 00BC 160000            jsr _LCD_display
+ 00BF           ;                      if (time3 == 9) {
+ 00BF FD000B            ldy _time3
+ 00C2 8D0009            cpy #9
+ 00C5 2606              bne L23
+ 00C7           ;                             time3 = -1;
+ 00C7 1803FFFF000B      movw #65535,_time3
+ 00CD           ;                      }
+ 00CD           L23:
+ 00CD           ; 		    }
+ 00CD           L21:
+ 00CD           ; 	   		if (incTens == 1) {
+ 00CD F60013            ldab _incTens
+ 00D0 C101              cmpb #1
+ 00D2 2627              bne L25
+ 00D4           ;                      time2++;
+ 00D4 FD0009            ldy _time2
+ 00D7 02                iny
+ 00D8 7D0009            sty _time2
+ 00DB           ;                      LCD_instruction(0x8B);
+ 00DB CC008B            ldd #139
+ 00DE 160000            jsr _LCD_instruction
+ 00E1           ;                      LCD_display(time2 + 0x30);
+ 00E1 FC0009            ldd _time2
+ 00E4 C30030            addd #48
+ 00E7 160000            jsr _LCD_display
+ 00EA           ;                      incTens = 0;
+ 00EA 790013            clr _incTens
+ 00ED           ;                      if (time2 == 9) { 
+ 00ED FD0009            ldy _time2
+ 00F0 8D0009            cpy #9
+ 00F3 2606              bne L27
+ 00F5           ;                             time2 = -1;
+ 00F5 1803FFFF0009      movw #65535,_time2
+ 00FB           ;                      }
+ 00FB           L27:
+ 00FB           ; 		    }
+ 00FB           L25:
+ 00FB           ; 		    time++;
+ 00FB FD0007            ldy _time
+ 00FE 02                iny
+ 00FF 7D0007            sty _time
+ 0102           ;                   LCD_instruction(0x8C); //0x80 forces cursor to first line. 0xC0 is second line
+ 0102 CC008C            ldd #140
+ 0105 160000            jsr _LCD_instruction
+ 0108           ;                   LCD_display(time + 0x30);
+ 0108 FC0007            ldd _time
+ 010B C30030            addd #48
+ 010E 160000            jsr _LCD_display
+ 0111           ;                   if (time == 9) {
+ 0111 FD0007            ldy _time
+ 0114 8D0009            cpy #9
+ 0117 260B              bne L29
+ 0119           ;                      time = -1;
+ 0119 1803FFFF0007      movw #65535,_time
+ 011F           ;                      incTens = 1;
+ 011F 180B010013        movb #1,_incTens
+ 0124           ;                   }
+ 0124           L29:
+ 0124           ; 		    counter = 0;
+ 0124 180300000011      movw #0,_counter
+ 012A           ;           }
+ 012A           L15:
+ 012A           ; 		//End Timer
+ 012A           ; 		
+ 012A           ; 		if (temp != previousTemp) { //display updated temperature
+ 012A FD0003            ldy _temp
+ 012D BD0005            cpy _previousTemp
+ 0130 2730              beq L31
+ 0132           ;                        LCD_instruction(0xC3);
+ 0132 CC00C3            ldd #195
+ 0135 160000            jsr _LCD_instruction
+ 0138           ;                        LCD_display((temp % 10) + 0x30); //have to print 1 digit at a time
+ 0138 CE000A            ldx #10
+ 013B FC0003            ldd _temp
+ 013E 1815              idivs
+ 0140 C30030            addd #48
+ 0143 160000            jsr _LCD_display
+ 0146           ;                        LCD_instruction(0xC4);
+ 0146 CC00C4            ldd #196
+ 0149 160000            jsr _LCD_instruction
+ 014C           ;                        LCD_display((temp / 10) + 0x30);
+ 014C CE000A            ldx #10
+ 014F FC0003            ldd _temp
+ 0152 1815              idivs
+ 0154 B754              tfr X,D
+ 0156 C30030            addd #48
+ 0159 160000            jsr _LCD_display
+ 015C           ;                        previousTemp = temp;
+ 015C 180400030005      movw _temp,_previousTemp
+ 0162           ;               }
+ 0162           L31:
+ 0162           ; 		if (temp > 24 && fan_duty != 100) { //23C + 2 = 25 (too hot)
+ 0162 FD0003            ldy _temp
+ 0165 8D0018            cpy #24
+ 0168 2F22              ble L33
+ 016A F60003            ldab _fan_duty
+ 016D C164              cmpb #100
+ 016F 271B              beq L33
+ 0171           ;                       //ramp fan
+ 0171           ;                       PTM &= 0x7F; //clear bit 7 to turn off heater
+ 0171 1D025080          bclr 0x250,#128
+ 0175           ;                       for (fan_duty = 0; fan_duty <= 100; fan_duty++) { //ramp up fan
+ 0175 790003            clr _fan_duty
+ 0178 2009              bra L38
+ 017A           L35:
+ 017A           ; 				PWMDTY4 = fan_duty;
+ 017A 180C000300C0      movb _fan_duty,0xc0
+ 0180           ;                       }       
+ 0180           L36:
+ 0180 720003            inc _fan_duty
+ 0183           L38:
+ 0183 F60003            ldab _fan_duty
+ 0186 C164              cmpb #100
+ 0188 23F0              bls L35
+ 018A           ;               } else if (temp < 22) { //turn on heater, turn off fan. 23C - 2 = 21 (too cold)
+ 018A 2024              bra L34
+ 018C           L33:
+ 018C FD0003            ldy _temp
+ 018F 8D0016            cpy #22
+ 0192 2C1C              bge L39
+ 0194           ;                       PTM |= 0x80; //note: heater on RTI needs to trigger ADCISR?
+ 0194 1C025080          bset 0x250,#128
+ 0198           ;                       for (i = fan_duty; i >= 1; i--) { //decelerate fan
+ 0198 180C00030007      movb _fan_duty,_i
+ 019E 2009              bra L44
+ 01A0           L41:
+ 01A0           ; 				PWMDTY4 = i;
+ 01A0 180C000700C0      movb _i,0xc0
+ 01A6           ;                   }
+ 01A6           L42:
+ 01A6 730007            dec _i
+ 01A9           L44:
+ 01A9 F60007            ldab _i
+ 01AC C101              cmpb #1
+ 01AE 24F0              bhs L41
+ 01B0           ;               }
+ 01B0           L39:
+ 01B0           L34:
+ 01B0           ; 		//Motor RPS
+ 01B0           ; 		if (desiredRPS != actualRPS) {
+ 01B0 F60001            ldab _desiredRPS
+ 01B3 F10002            cmpb _actualRPS
+ 01B6 2732              beq L45
+ 01B8           ;                       LCD_instruction(0xCA);
+ 01B8 CC00CA            ldd #202
+ 01BB 160000            jsr _LCD_instruction
+ 01BE           ;                       LCD_display((actualRPS % 10) + 0x30);
+ 01BE CE000A            ldx #10
+ 01C1 F60002            ldab _actualRPS
+ 01C4 87                clra
+ 01C5 1815              idivs
+ 01C7 C30030            addd #48
+ 01CA 160000            jsr _LCD_display
+ 01CD           ;                       LCD_instruction(0xCB);
+ 01CD CC00CB            ldd #203
+ 01D0 160000            jsr _LCD_instruction
+ 01D3           ;                       LCD_display((actualRPS / 10) + 0x30);
+ 01D3 CE000A            ldx #10
+ 01D6 F60002            ldab _actualRPS
+ 01D9 87                clra
+ 01DA 1815              idivs
+ 01DC B754              tfr X,D
+ 01DE C30030            addd #48
+ 01E1 160000            jsr _LCD_display
+ 01E4           ;                       desiredRPS = actualRPS;
+ 01E4 180C00020001      movb _actualRPS,_desiredRPS
+ 01EA           ;               }
+ 01EA           L45:
+ 01EA           ; 		
+ 01EA           ; 		//polling for button press 'F' to quit
+ 01EA           ; 		row = 0x08;
+ 01EA 180B080006        movb #8,_row
+ 01EF           ;               PTM |= 0x08; //latch is transparent
+ 01EF 1C025008          bset 0x250,#8
+ 01F3           ;               PTP = row; //if equals row (for button 'F')
+ 01F3 180C00060258      movb _row,0x258
+ 01F9           ;               PTM &= 0xF7;
+ 01F9 1D025008          bclr 0x250,#8
+ 01FD           ;               column = PTH & 0xF0;
+ 01FD F60260            ldab 0x260
+ 0200 C4F0              andb #240
+ 0202 7B0005            stab _column
+ 0205           ;               if (column == 0x40) { //if F is pressed at any time
+ 0205 F60005            ldab _column
+ 0208 C140              cmpb #64
+ 020A 2618              bne L47
+ 020C           ;                       PORTK &= 0x00; //turn off LEDs
+ 020C CC0000            ldd #0
+ 020F 7B0032            stab 0x32
+ 0212           ;                       PTT = 0; //set 7-segment to 0
+ 0212 790240            clr 0x240
+ 0215           ;                       CRGINT &= 0x00; //disable interrupts
+ 0215 CC0000            ldd #0
+ 0218 7B0038            stab 0x38
+ 021B           ;                       LCD_instruction(0x01);//Clear LCD
+ 021B CC0001            ldd #1
+ 021E 160000            jsr _LCD_instruction
+ 0221           ;                       //PWMDTY7 = 0; //stop motor
+ 0221           ;                       //PWMDTY4 = 0; //stop fan
+ 0221           ;                       exit(); 
+ 0221 160000            jsr _exit
+ 0224           ;               }
+ 0224           L47:
+ 0224           ; 		debounceDelay();
+ 0224 1603EC            jsr _debounceDelay
+ 0227           ;               
+ 0227           ;               //Press 1 to increase pump rate
+ 0227           ;               row = 0x01;
+ 0227 180B010006        movb #1,_row
+ 022C           ;               PTM |= 0x08; //latch is transparent
+ 022C 1C025008          bset 0x250,#8
+ 0230           ;               PTP = row; //if equals row (for button '1')
+ 0230 180C00060258      movb _row,0x258
+ 0236           ;               PTM &= 0xF7;
+ 0236 1D025008          bclr 0x250,#8
+ 023A           ;               column = PTH & 0xF0;
+ 023A F60260            ldab 0x260
+ 023D C4F0              andb #240
+ 023F 7B0005            stab _column
+ 0242           ;               if (column == 0x10) { //if 1 is pressed at any time
+ 0242 F60005            ldab _column
+ 0245 C110              cmpb #16
+ 0247 2622              bne L49
+ 0249           ;                       //increase pump rate
+ 0249           ;                       duty += 5;
+ 0249 F60004            ldab _duty
+ 024C CB05              addb #5
+ 024E 7B0004            stab _duty
+ 0251           ;                       if (duty > UPPER_LIMIT) {
+ 0251 F60004            ldab _duty
+ 0254 F10002            cmpb _UPPER_LIMIT
+ 0257 2306              bls L51
+ 0259           ;                               duty = UPPER_LIMIT;
+ 0259 180C00020004      movb _UPPER_LIMIT,_duty
+ 025F           ;                       }
+ 025F           L51:
+ 025F           ; 			PWMDTY7 = duty;
+ 025F 180C000400C3      movb _duty,0xc3
+ 0265           ;                       actualRPS = duty;
+ 0265 180C00040002      movb _duty,_actualRPS
+ 026B           ;               }
+ 026B           L49:
+ 026B           ; 		debounceDelay();
+ 026B 1603EC            jsr _debounceDelay
+ 026E           ;               
+ 026E           ;               //Press 2 to increase pump rate
+ 026E           ;               row = 0x01;
+ 026E 180B010006        movb #1,_row
+ 0273           ;               PTM |= 0x08; //latch is transparent
+ 0273 1C025008          bset 0x250,#8
+ 0277           ;               PTP = row; //if equals row (for button '2')
+ 0277 180C00060258      movb _row,0x258
+ 027D           ;               PTM &= 0xF7;
+ 027D 1D025008          bclr 0x250,#8
+ 0281           ;               column = PTH & 0xF0;
+ 0281 F60260            ldab 0x260
+ 0284 C4F0              andb #240
+ 0286 7B0005            stab _column
+ 0289           ;               if (column == 0x20) { //if 2 is pressed at any time
+ 0289 F60005            ldab _column
+ 028C C120              cmpb #32
+ 028E 2622              bne L53
+ 0290           ;                       //decrease pump rate
+ 0290           ;                       duty -= 5;
+ 0290 F60004            ldab _duty
+ 0293 C005              subb #5
+ 0295 7B0004            stab _duty
+ 0298           ;                       if (duty < LOWER_LIMIT) {
+ 0298 F60004            ldab _duty
+ 029B F10001            cmpb _LOWER_LIMIT
+ 029E 2406              bhs L55
+ 02A0           ;                               duty = LOWER_LIMIT;
+ 02A0 180C00010004      movb _LOWER_LIMIT,_duty
+ 02A6           ;                       }
+ 02A6           L55:
+ 02A6           ; 			PWMDTY7 = duty;
+ 02A6 180C000400C3      movb _duty,0xc3
+ 02AC           ;                       actualRPS = duty;
+ 02AC 180C00040002      movb _duty,_actualRPS
+ 02B2           ;               }
+ 02B2           L53:
+ 02B2           ; 		debounceDelay();
+ 02B2 1603EC            jsr _debounceDelay
+ 02B5           ;               if (blindStart == 0) { //will only work when blinds have not started
+ 02B5 F60000            ldab _blindStart
+ 02B8 C100              cmpb #0
+ 02BA 262A              bne L57
+ 02BC           ;                       //Press 4 to raise blind
+ 02BC           ;                       row = 0x02;
+ 02BC 180B020006        movb #2,_row
+ 02C1           ;                       PTM |= 0x08; //latch is transparent
+ 02C1 1C025008          bset 0x250,#8
+ 02C5           ;                       PTP = row; //if equals row (for button '4')
+ 02C5 180C00060258      movb _row,0x258
+ 02CB           ;                       PTM &= 0xF7;
+ 02CB 1D025008          bclr 0x250,#8
+ 02CF           ;                       column = PTH & 0xF0;
+ 02CF F60260            ldab 0x260
+ 02D2 C4F0              andb #240
+ 02D4 7B0005            stab _column
+ 02D7           ;                       if (column == 0x10) { //if 4 is pressed at any time
+ 02D7 F60005            ldab _column
+ 02DA C110              cmpb #16
+ 02DC 2605              bne L59
+ 02DE           ;                               //start motor
+ 02DE           ;                               //OC5 = TCNT + 10000 //10ms
+ 02DE           ;                               blindStart = 1;
+ 02DE 180B010000        movb #1,_blindStart
+ 02E3           ;                       }
+ 02E3           L59:
+ 02E3           ; 			debounceDelay();
+ 02E3 1603EC            jsr _debounceDelay
+ 02E6           ;               }
+ 02E6           L57:
+ 02E6           ; 		
+ 02E6           ; 		if (blindStart == 0) {
+ 02E6 F60000            ldab _blindStart
+ 02E9 C100              cmpb #0
+ 02EB 2630              bne L61
+ 02ED           ;                       //Press 5 to lower blind
+ 02ED           ;                       row = 0x02;
+ 02ED 180B020006        movb #2,_row
+ 02F2           ;                       PTM |= 0x08; //latch is transparent
+ 02F2 1C025008          bset 0x250,#8
+ 02F6           ;                       PTP = row; //if equals row (for button '5')
+ 02F6 180C00060258      movb _row,0x258
+ 02FC           ;                       PTM &= 0xF7;
+ 02FC 1D025008          bclr 0x250,#8
+ 0300           ;                       column = PTH & 0xF0;
+ 0300 F60260            ldab 0x260
+ 0303 C4F0              andb #240
+ 0305 7B0005            stab _column
+ 0308           ;                       if (column == 0x20) { //if 5 is pressed at any time
+ 0308 F60005            ldab _column
+ 030B C120              cmpb #32
+ 030D 260B              bne L63
+ 030F           ;                               //start motor reversed
+ 030F           ;                               TC4 = TCNT;
+ 030F 180400440058      movw 0x44,0x58
+ 0315           ;                               blindStart = 2;
+ 0315 180B020000        movb #2,_blindStart
+ 031A           ;                       }
+ 031A           L63:
+ 031A           ; 			debounceDelay();
+ 031A 1603EC            jsr _debounceDelay
+ 031D           ;               }
+ 031D           L61:
+ 031D           ; 		
+ 031D           ; 		if (TFLG2 & 0x80) { //if TCNT overflow is set
+ 031D 1F004F800C        brclr 0x4f,#128,L65
+ 0322           ;                       //TCRE = 0x01; //Will clear TCNT if successful compare 7
+ 0322           ;                       TCNT = 0x0000;
+ 0322 180300000044      movw #0,0x44
+ 0328           ;                       TC4 = 0x0000;
+ 0328 180300000058      movw #0,0x58
+ 032E           ;               }
+ 032E           L65:
+ 032E           ; 		
+ 032E           ; 		//TIE |= 0x10; //For the blind control (ouput capture?)
+ 032E           ; 	} //end while
+ 032E           L13:
+ 032E 1820FD21          lbra L12
+ 0332           X0:
+ 0332           L3:
+ 0332                   .dbline 0 ; func end
+ 0332 1B82              leas 2,S
+ 0334 3D                rts
+ 0335           _initHW::
+ 0335           ; 	
+ 0335           ; 	
+ 0335           ; 
+ 0335           ; }
+ 0335           ; 
+ 0335           ; void initHW() {
+ 0335           ; 
+ 0335           ; 	//Heater is port M, pin 7
+ 0335           ; 	//This is ativated when temperature is too cold
+ 0335           ; 	
+ 0335           ; 	//init LCD
+ 0335           ; 	Lcd2PP_Init();
+ 0335 160000            jsr _Lcd2PP_Init
+ 0338           ;       //Temp sensor is PortAD0 Pin 6 (PAD6)
+ 0338           ;       ATD0CTL2 |= 0xFA;
+ 0338 1C0082FA          bset 0x82,#250
+ 033C           ;       ATD0CTL3 |= 0x00;
+ 033C F60083            ldab 0x83
+ 033F 7B0083            stab 0x83
+ 0342           ;       ATD0CTL4 |= 0x60;
+ 0342 1C008460          bset 0x84,#96
+ 0346           ;       
+ 0346           ;       //stepper motor
+ 0346           ;       DDRP |= 0x20;
+ 0346 1C025A20          bset 0x25a,#32
+ 034A           ;       DDRT |= 0x60;
+ 034A 1C024260          bset 0x242,#96
+ 034E           ;       PTP |= 0x20;
+ 034E 1C025820          bset 0x258,#32
+ 0352           ;       
+ 0352           ;       //Fan
+ 0352           ;       PWMCLK = 0x00; //Select Clock A for channel 4
+ 0352 7900A2            clr 0xa2
+ 0355           ;       PWMPRCLK |= 0x07; //Prescale ClockA : busclock/128
+ 0355 1C00A307          bset 0xa3,#7
+ 0359           ;       PWMCAE &= 0xEF; //Channel 4 left aligned
+ 0359 1D00A410          bclr 0xa4,#16
+ 035D           ;       PWMPER4 = 100; //Set period for PWM4
+ 035D 180B6400B8        movb #100,0xb8
+ 0362           ;       PWME |= 0x10; //Enable PWM channel 4
+ 0362 1C00A010          bset 0xa0,#16
+ 0366           ;       //Fan is ramped up when needed
+ 0366           ;       
+ 0366           ;       //Water Pump - DC Motor
+ 0366           ;       PWMPOL = 0xFF; // Initial Polarity is high
+ 0366 180BFF00A1        movb #255,0xa1
+ 036B           ;       PWMCLK &= 0x7F; //Select Clock B for channel 7
+ 036B 1D00A280          bclr 0xa2,#128
+ 036F           ;       PWMPRCLK |= 0x70; //Prescale ClockB : busclock/128
+ 036F 1C00A370          bset 0xa3,#112
+ 0373           ;       PWMCAE &= 0x7F; //Channel 7 : left aligned
+ 0373 1D00A480          bclr 0xa4,#128
+ 0377           ;       PWMCTL &= 0xF3; //PWM in Wait and Freeze Modes
+ 0377 1D00A50C          bclr 0xa5,#12
+ 037B           ;       PWMPER7 = 100; //Set period for PWM7
+ 037B 180B6400BB        movb #100,0xbb
+ 0380           ;       PWME |= 0x80; //Enable PWM Channel 7
+ 0380 1C00A080          bset 0xa0,#128
+ 0384           ;       DDRP |= 0x40; //For Motor Direction Control
+ 0384 1C025A40          bset 0x25a,#64
+ 0388           ;       PAFLG |= 1; //Clear out the interrupt flag
+ 0388 1C006101          bset 0x61,#1
+ 038C           ;       PACTL = 0x50; //Enable PACA for Optical Sensor
+ 038C 180B500060        movb #80,0x60
+ 0391           ; 
+ 0391           ;       INTR_ON();
+ 0391 10EF              cli
+ 0393           ;       PTP = 0x00; //Clockwise 0x40 is counterClockwise;
+ 0393 790258            clr 0x258
+ 0396           ;       for(duty = 10; duty <= 15; duty++) { //ramp up motor
+ 0396 180B0A0004        movb #10,_duty
+ 039B 2009              bra L71
+ 039D           L68:
+ 039D           ; 		PWMDTY7 = duty;
+ 039D 180C000400C3      movb _duty,0xc3
+ 03A3           ;       }
+ 03A3           L69:
+ 03A3 720004            inc _duty
+ 03A6           L71:
+ 03A6 F60004            ldab _duty
+ 03A9 C10F              cmpb #15
+ 03AB 23F0              bls L68
+ 03AD           ;       
+ 03AD           ;       //Output Compare
+ 03AD           ;       TIOS |= 0x10; //select OC4 function
+ 03AD 1C004010          bset 0x40,#16
+ 03B1           ;       TSCR2 = 0x02; //prescale factor to 4 (0x01 is 2, 0x00 is 1)
+ 03B1 180B02004D        movb #2,0x4d
+ 03B6           ;       TCTL2 = 0x01; //select toggle as output compare
+ 03B6 180B010049        movb #1,0x49
+ 03BB           ;       TSCR1 = 0x80; //enable TCNT as fast timer flag clear
+ 03BB 180B800046        movb #128,0x46
+ 03C0           ;       TC4 = TCNT + 500; //(high time)
+ 03C0 FC0044            ldd 0x44
+ 03C3 C301F4            addd #500
+ 03C6 7C0058            std 0x58
+ 03C9           ;       
+ 03C9           ;       //init 7Segment?
+ 03C9           ;       //DDRT |= 0x0F;
+ 03C9           ;       
+ 03C9           ;       //init Keypad
+ 03C9           ;       DDRP |= 0x0F; //row scan (output)
+ 03C9 1C025A0F          bset 0x25a,#15
+ 03CD           ;       DDRH &= 0x0F; //column scan (input)
+ 03CD 1D0262F0          bclr 0x262,#240
+ 03D1           ;       SPI1CR1 = 0; //Disable SPI
+ 03D1 7900F0            clr 0xf0
+ 03D4           ;       
+ 03D4           ;       //init LEDs
+ 03D4           ;       DDRK = 0x0F;
+ 03D4 180B0F0033        movb #15,0x33
+ 03D9           ;       PORTK |= 0x01;
+ 03D9 1C003201          bset 0x32,#1
+ 03DD           ;       
+ 03DD           ;       //init RTI ISR
+ 03DD           ;       CRGFLG |= 0x80;
+ 03DD 1C003780          bset 0x37,#128
+ 03E1           ;       RTICTL |= 0x7F; //max divider 3F?
+ 03E1 1C003B7F          bset 0x3b,#127
+ 03E5           ;       CRGINT |= 0x80;
+ 03E5 1C003880          bset 0x38,#128
+ 03E9           ;       asm("CLI");
+ 03E9 10EF              CLI
+ 03EB           L67:
+ 03EB                   .dbline 0 ; func end
+ 03EB 3D                rts
+ 03EC           _debounceDelay::
+ 03EC           ; 	
+ 03EC           ; }
+ 03EC           ; 
+ 03EC           ; 
+ 03EC           ; /*this was used to print integers, but it's not working
+ 03EC           ; int j = 0;
+ 03EC           ; void intToString(int num) {
+ 03EC           ; 
+ 03EC           ; 	while(num != 0) {
+ 03EC           ; 	    stringArray[j] = (num % 10) + 48;
+ 03EC           ; 		num /= 10;
+ 03EC           ; 		j++;
+ 03EC           ; 	}
+ 03EC           ; 
+ 03EC           ; }*/
+ 03EC           ; void debounceDelay(void) {
+ 03EC           ; 	
+ 03EC           ; 	for(i = 0; i <= 26000; i++) {
+ 03EC 790007            clr _i
+ 03EF 2019              bra L76
+ 03F1           L73:
+ 03F1           ; 		i = i*2;
+ 03F1 F60007            ldab _i
+ 03F4 87                clra
+ 03F5 59                lsld
+ 03F6 7B0007            stab _i
+ 03F9           ;               i = i/2;
+ 03F9 CE0002            ldx #2
+ 03FC F60007            ldab _i
+ 03FF 87                clra
+ 0400 1815              idivs
+ 0402 B751              tfr X,B
+ 0404 7B0007            stab _i
+ 0407           ;       }
+ 0407           L74:
+ 0407 720007            inc _i
+ 040A           L76:
+ 040A F60007            ldab _i
+ 040D 87                clra
+ 040E 8C6590            cpd #26000
+ 0411 2FDE              ble L73
+ 0413           L72:
+ 0413                   .dbline 0 ; func end
+ 0413 3D                rts
+ 0414           _takeRPSReading::
+ 0414           ; }
+ 0414           ; 
+ 0414           ; void takeRPSReading(void) {
+ 0414           ; 	actualRPS = rotations;
+ 0414 180C00000002      movb _rotations,_actualRPS
+ 041A           ;       rotations = 0;
+ 041A 790000            clr _rotations
+ 041D           ;       //actualRPS = PACN2; ?
+ 041D           ;       desiredRPS = actualRPS;
+ 041D 180C00020001      movb _actualRPS,_desiredRPS
+ 0423           L77:
+ 0423                   .dbline 0 ; func end
+ 0423 3D                rts
+ 0424           _RTIISR::
+ 0424           ; }
+ 0424           ; 
+ 0424           ; #pragma interrupt_handler RTIISR()
+ 0424           ; void RTIISR(void) {
+ 0424           ; 	counter++;
+ 0424 FD0011            ldy _counter
+ 0427 02                iny
+ 0428 7D0011            sty _counter
+ 042B           ;       if (counter == 4) { //at 1Hz
+ 042B FD0011            ldy _counter
+ 042E 8D0004            cpy #4
+ 0431 2607              bne L79
+ 0433           ;           //time++;
+ 0433           ;               globalTime++; //timer that never resets
+ 0433 FD000F            ldy _globalTime
+ 0436 02                iny
+ 0437 7D000F            sty _globalTime
+ 043A           ;     }
+ 043A           L79:
+ 043A           ; 	if (counter % 2 == 0) { //run at 2Hz
+ 043A CE0002            ldx #2
+ 043D FC0011            ldd _counter
+ 0440 1815              idivs
+ 0442 8C0000            cpd #0
+ 0445 2610              bne L81
+ 0447           ;               /*timer - doesnt work
+ 0447           ;               if (time = 9) {
+ 0447           ;                       time = 0;
+ 0447           ;                       time2++;
+ 0447           ;                       if (time2 = 9) {
+ 0447           ;                               time2 = 0;
+ 0447           ;                               time3++;
+ 0447           ;                               if (time3 == 9) {
+ 0447           ;                                       time3 = 0;
+ 0447           ;                                       time4++;
+ 0447           ;                                       if (time4 == 9) {
+ 0447           ;                                               time4 = 0;
+ 0447           ;                                               time3 = 0;
+ 0447           ;                                               time2 = 0;
+ 0447           ;                                               time = 0;
+ 0447           ;                                       }
+ 0447           ;                               }
+ 0447           ;                       }
+ 0447           ;               }*/
+ 0447           ;               //For motor
+ 0447           ;               if (globalTime == 1) { //take initial reading at 1 second
+ 0447 FD000F            ldy _globalTime
+ 044A 8D0001            cpy #1
+ 044D 2603              bne L83
+ 044F           ;                       takeRPSReading();
+ 044F 160414            jsr _takeRPSReading
+ 0452           ;               }
+ 0452           L83:
+ 0452           ; 		ATD0CTL5 = 0x86; //take temperature reading
+ 0452 180B860085        movb #134,0x85
+ 0457           ;       }
+ 0457           L81:
+ 0457           ; 	CRGFLG |= 0x80;
+ 0457 1C003780          bset 0x37,#128
+ 045B           L78:
+ 045B                   .dbline 0 ; func end
+ 045B 0B                rti
+ 045C           _ADInt::
+ 045C           ; }
+ 045C           ; 
+ 045C           ; #pragma interrupt_handler ADInt()
+ 045C           ; void ADInt(void) {
+ 045C           ; 	
+ 045C           ; 	temp = ATD0DR6 & 0x0300; //as per slides
+ 045C FC009C            ldd 0x9c
+ 045F 8403              anda #3
+ 0461 C400              andb #0
+ 0463 7C0003            std _temp
+ 0466           ;       temp = (temp >> 3) + 5; //or temp = (ATD0DR6 / 8) - 5; - not + because that's what was done in class
+ 0466 FC0003            ldd _temp
+ 0469 47                asra
+ 046A 56                rorb
+ 046B 47                asra
+ 046C 56                rorb
+ 046D 47                asra
+ 046E 56                rorb
+ 046F C30005            addd #5
+ 0472 7C0003            std _temp
+ 0475           ;       temp = (temp * 5) / 9;
+ 0475 CC0005            ldd #5
+ 0478 FD0003            ldy _temp
+ 047B 13                emul
+ 047C B746              tfr D,Y
+ 047E CE0009            ldx #9
+ 0481 B764              tfr Y,D
+ 0483 1815              idivs
+ 0485 7E0003            stx _temp
+ 0488           ;       temp -= 32; //convert to C
+ 0488 FC0003            ldd _temp
+ 048B 830020            subd #32
+ 048E 7C0003            std _temp
+ 0491           L85:
+ 0491                   .dbline 0 ; func end
+ 0491 0B                rti
+                        .area data
+ 003A           _next::
+ 003A                   .blkb 1
+                        .area idata
+ 003A 00                .byte 0
+                        .area data
+                        .area text
+ 0492           _TIMERISR::
+ 0492           ; 	
+ 0492           ; }
+ 0492           ; 
+ 0492           ; char next = 0;
+ 0492           ; #pragma interrupt_handler TIMERISR()
+ 0492           ; //This will happen when TC4 = TCNT
+ 0492           ; void TIMERISR(void) {
+ 0492           ; 	if (blindStart == 1) {
+ 0492 F60000            ldab _blindStart
+ 0495 C101              cmpb #1
+ 0497 18260101          lbne L87
+ 049B           ;               
+ 049B           ;                if (next == 0) {
+ 049B F6003A            ldab _next
+ 049E C100              cmpb #0
+ 04A0 2629              bne L89
+ 04A2           ;                               PTT |= 0x60;
+ 04A2 1C024060          bset 0x240,#96
+ 04A6           ;                               TC4 = TCNT + 1000000; //do this in 1s
+ 04A6 FD0044            ldy 0x44
+ 04A9 35                pshy
+ 04AA 1800AE0000        movw #0,2,-S
+ 04AF 1800AE4240        movw #16960,2,-S
+ 04B4 1800AE000F        movw #15,2,-S
+ 04B9 160000            jsr add4
+ 04BC 1B82              leas 2,S
+ 04BE 31                puly
+ 04BF 7D0058            sty 0x58
+ 04C2           ;                               next = 1;
+ 04C2 180B01003A        movb #1,_next
+ 04C7           ;                }
+ 04C7 182001D1          lbra L88
+ 04CB           L89:
+ 04CB           ; 		 else if (next == 1) { 
+ 04CB F6003A            ldab _next
+ 04CE C101              cmpb #1
+ 04D0 2629              bne L91
+ 04D2           ;                               PTT |= 0x40;
+ 04D2 1C024040          bset 0x240,#64
+ 04D6           ;                               TC4 = TCNT + 1000000; //1s
+ 04D6 FD0044            ldy 0x44
+ 04D9 35                pshy
+ 04DA 1800AE0000        movw #0,2,-S
+ 04DF 1800AE4240        movw #16960,2,-S
+ 04E4 1800AE000F        movw #15,2,-S
+ 04E9 160000            jsr add4
+ 04EC 1B82              leas 2,S
+ 04EE 31                puly
+ 04EF 7D0058            sty 0x58
+ 04F2           ;                               next = 2;
+ 04F2 180B02003A        movb #2,_next
+ 04F7           ;                }
+ 04F7 182001A1          lbra L88
+ 04FB           L91:
+ 04FB           ; 		 else if (next == 2) {
+ 04FB F6003A            ldab _next
+ 04FE C102              cmpb #2
+ 0500 262B              bne L93
+ 0502           ;                               PTT |= 0x00;
+ 0502 F60240            ldab 0x240
+ 0505 7B0240            stab 0x240
+ 0508           ;                               TC4 = TCNT + 1000000; //1s
+ 0508 FD0044            ldy 0x44
+ 050B 35                pshy
+ 050C 1800AE0000        movw #0,2,-S
+ 0511 1800AE4240        movw #16960,2,-S
+ 0516 1800AE000F        movw #15,2,-S
+ 051B 160000            jsr add4
+ 051E 1B82              leas 2,S
+ 0520 31                puly
+ 0521 7D0058            sty 0x58
+ 0524           ;                               next = 3;
+ 0524 180B03003A        movb #3,_next
+ 0529           ;                }
+ 0529 1820016F          lbra L88
+ 052D           L93:
+ 052D           ; 		 else if (next == 3) {
+ 052D F6003A            ldab _next
+ 0530 C103              cmpb #3
+ 0532 2629              bne L95
+ 0534           ;                               PTT |= 0x20;
+ 0534 1C024020          bset 0x240,#32
+ 0538           ;                               TC4 = TCNT + 1000000; //1s
+ 0538 FD0044            ldy 0x44
+ 053B 35                pshy
+ 053C 1800AE0000        movw #0,2,-S
+ 0541 1800AE4240        movw #16960,2,-S
+ 0546 1800AE000F        movw #15,2,-S
+ 054B 160000            jsr add4
+ 054E 1B82              leas 2,S
+ 0550 31                puly
+ 0551 7D0058            sty 0x58
+ 0554           ;                               next = 4;
+ 0554 180B04003A        movb #4,_next
+ 0559           ;                }
+ 0559 1820013F          lbra L88
+ 055D           L95:
+ 055D           ; 		 else if (next == 4) {
+ 055D F6003A            ldab _next
+ 0560 C104              cmpb #4
+ 0562 2625              bne L97
+ 0564           ;                       TC4 = TCNT + 1000000; //1s for a total of 5s
+ 0564 FD0044            ldy 0x44
+ 0567 35                pshy
+ 0568 1800AE0000        movw #0,2,-S
+ 056D 1800AE4240        movw #16960,2,-S
+ 0572 1800AE000F        movw #15,2,-S
+ 0577 160000            jsr add4
+ 057A 1B82              leas 2,S
+ 057C 31                puly
+ 057D 7D0058            sty 0x58
+ 0580           ;                       next = 5;
+ 0580 180B05003A        movb #5,_next
+ 0585           ;               } else if (next == 5) {
+ 0585 18200113          lbra L88
+ 0589           L97:
+ 0589 F6003A            ldab _next
+ 058C C105              cmpb #5
+ 058E 1826010A          lbne L88
+ 0592           ;                       next = 0;
+ 0592 79003A            clr _next
+ 0595           ;                       blindStart = 0;
+ 0595 790000            clr _blindStart
+ 0598           ;               }
+ 0598           ;               
+ 0598           ;       } else if (blindStart == 2) {
+ 0598 18200100          lbra L88
+ 059C           L87:
+ 059C F60000            ldab _blindStart
+ 059F C102              cmpb #2
+ 05A1 182600F7          lbne L101
+ 05A5           ;       
+ 05A5           ;               //go opposite direction
+ 05A5           ;                if (next == 0) {
+ 05A5 F6003A            ldab _next
+ 05A8 C100              cmpb #0
+ 05AA 2629              bne L103
+ 05AC           ;                               PTT |= 0x20;
+ 05AC 1C024020          bset 0x240,#32
+ 05B0           ;                               TC4 = TCNT + 1000000;
+ 05B0 FD0044            ldy 0x44
+ 05B3 35                pshy
+ 05B4 1800AE0000        movw #0,2,-S
+ 05B9 1800AE4240        movw #16960,2,-S
+ 05BE 1800AE000F        movw #15,2,-S
+ 05C3 160000            jsr add4
+ 05C6 1B82              leas 2,S
+ 05C8 31                puly
+ 05C9 7D0058            sty 0x58
+ 05CC           ;                               next = 1;
+ 05CC 180B01003A        movb #1,_next
+ 05D1           ;                }
+ 05D1 182000C7          lbra L104
+ 05D5           L103:
+ 05D5           ; 		 else if (next == 1) { 
+ 05D5 F6003A            ldab _next
+ 05D8 C101              cmpb #1
+ 05DA 262B              bne L105
+ 05DC           ;                               PTT |= 0x00;
+ 05DC F60240            ldab 0x240
+ 05DF 7B0240            stab 0x240
+ 05E2           ;                               TC4 = TCNT + 1000000;
+ 05E2 FD0044            ldy 0x44
+ 05E5 35                pshy
+ 05E6 1800AE0000        movw #0,2,-S
+ 05EB 1800AE4240        movw #16960,2,-S
+ 05F0 1800AE000F        movw #15,2,-S
+ 05F5 160000            jsr add4
+ 05F8 1B82              leas 2,S
+ 05FA 31                puly
+ 05FB 7D0058            sty 0x58
+ 05FE           ;                               next = 2;
+ 05FE 180B02003A        movb #2,_next
+ 0603           ;                }
+ 0603 18200095          lbra L106
+ 0607           L105:
+ 0607           ; 		 else if (next == 2) {
+ 0607 F6003A            ldab _next
+ 060A C102              cmpb #2
+ 060C 2629              bne L107
+ 060E           ;                               PTT |= 0x40;
+ 060E 1C024040          bset 0x240,#64
+ 0612           ;                               TC4 = TCNT + 1000000;
+ 0612 FD0044            ldy 0x44
+ 0615 35                pshy
+ 0616 1800AE0000        movw #0,2,-S
+ 061B 1800AE4240        movw #16960,2,-S
+ 0620 1800AE000F        movw #15,2,-S
+ 0625 160000            jsr add4
+ 0628 1B82              leas 2,S
+ 062A 31                puly
+ 062B 7D0058            sty 0x58
+ 062E           ;                               next = 3;
+ 062E 180B03003A        movb #3,_next
+ 0633           ;                }
+ 0633 18200065          lbra L108
+ 0637           L107:
+ 0637           ; 		 else if (next == 3) {
+ 0637 F6003A            ldab _next
+ 063A C103              cmpb #3
+ 063C 2627              bne L109
+ 063E           ;                               PTT |= 0x60;
+ 063E 1C024060          bset 0x240,#96
+ 0642           ;                               TC4 = TCNT + 1000000;
+ 0642 FD0044            ldy 0x44
+ 0645 35                pshy
+ 0646 1800AE0000        movw #0,2,-S
+ 064B 1800AE4240        movw #16960,2,-S
+ 0650 1800AE000F        movw #15,2,-S
+ 0655 160000            jsr add4
+ 0658 1B82              leas 2,S
+ 065A 31                puly
+ 065B 7D0058            sty 0x58
+ 065E           ;                               next = 4;
+ 065E 180B04003A        movb #4,_next
+ 0663           ;                }
+ 0663 2037              bra L110
+ 0665           L109:
+ 0665           ; 		 else if (next == 4) {
+ 0665 F6003A            ldab _next
+ 0668 C104              cmpb #4
+ 066A 2623              bne L111
+ 066C           ;                       TC4 = TCNT + 1000000; //1s for a total of 5s
+ 066C FD0044            ldy 0x44
+ 066F 35                pshy
+ 0670 1800AE0000        movw #0,2,-S
+ 0675 1800AE4240        movw #16960,2,-S
+ 067A 1800AE000F        movw #15,2,-S
+ 067F 160000            jsr add4
+ 0682 1B82              leas 2,S
+ 0684 31                puly
+ 0685 7D0058            sty 0x58
+ 0688           ;                       next = 5;
+ 0688 180B05003A        movb #5,_next
+ 068D           ;               } else if (next == 5) {
+ 068D 200D              bra L112
+ 068F           L111:
+ 068F F6003A            ldab _next
+ 0692 C105              cmpb #5
+ 0694 2606              bne L113
+ 0696           ;                       next = 0;
+ 0696 79003A            clr _next
+ 0699           ;                       blindStart = 0;
+ 0699 790000            clr _blindStart
+ 069C           ;               }
+ 069C           L113:
+ 069C           L112:
+ 069C           L110:
+ 069C           L108:
+ 069C           L106:
+ 069C           L104:
+ 069C           ; 	
+ 069C           ; 	}
+ 069C           L101:
+ 069C           L88:
+ 069C           ; 	TFLG1 |= 0x10;
+ 069C 1C004E10          bset 0x4e,#16
+ 06A0           L86:
+ 06A0                   .dbline 0 ; func end
+ 06A0 0B                rti
+ 06A1           _pacA_ISR::
+ 06A1           ; }
+ 06A1           ; 
+ 06A1           ; #pragma interrupt_handler TIMERISR()
+ 06A1           ; void pacA_ISR(void) {
+ 06A1           ; 	
+ 06A1           ; 	rotations++;
+ 06A1 720000            inc _rotations
+ 06A4           ;       PAFLG |= 0x01;
+ 06A4 1C006101          bset 0x61,#1
+ 06A8           L115:
+ 06A8                   .dbline 0 ; func end
+ 06A8 3D                rts
+                        .area bss
+ 0000           _rotations::
+ 0000                   .blkb 1
+ 0001           _desiredRPS::
+ 0001                   .blkb 1
+ 0002           _actualRPS::
+ 0002                   .blkb 1
+ 0003           _fan_duty::
+ 0003                   .blkb 1
+ 0004           _duty::
+ 0004                   .blkb 1
+ 0005           _column::
+ 0005                   .blkb 1
+ 0006           _row::
+ 0006                   .blkb 1
+ 0007           _i::
+ 0007                   .blkb 1
